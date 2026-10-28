@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="actions barre"><a class="bouton" href="/patients/nouveau">Ajouter un patient</a></div>
+{% if patients %}
+<table>
+<thead><tr><th>Nom</th><th>Prénom</th><th>Date de naissance</th></tr></thead>
+<tbody>
+{% for p in patients %}
+<tr><td><a href="/patients/{{ p.id }}">{{ p.nom }}</a></td><td><a href="/patients/{{ p.id }}">{{ p.prenom }}</a></td><td>{{ p.date_naissance or "—" }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class="vide">Aucun patient.</p>
+{% endif %}
+{% endblock %}

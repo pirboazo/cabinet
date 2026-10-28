@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block contenu %}
+<section class="carte">
+<dl>
+<dt>Patient</dt><dd><a href="/patients/{{ consultation.patient_id }}">{{ consultation.nom }} {{ consultation.prenom }}</a></dd>
+<dt>Médecin</dt><dd>{{ consultation.medecin or "—" }}</dd>
+<dt>Date</dt><dd>{{ consultation.date_consultation }}</dd>
+<dt>Rendez-vous</dt><dd>{{ rdv or "—" }}</dd>
+</dl>
+<h2>Motif</h2>
+<p class="texte">{{ consultation.motif or "—" }}</p>
+<h2>Observations</h2>
+<p class="texte">{{ consultation.observations or "—" }}</p>
+<h2>Diagnostic</h2>
+<p class="texte">{{ consultation.diagnostic or "—" }}</p>
+<h2>Traitement</h2>
+<p class="texte">{{ consultation.traitement or "—" }}</p>
+</section>
+<div class="actions barre">
+<a class="bouton" href="/consultations/{{ consultation.id }}/modifier">Modifier ce compte-rendu</a>
+</div>
+{% endblock %}

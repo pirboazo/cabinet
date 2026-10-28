@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "macros.html" import messages_erreur, champ, zone_texte, select %}
+{% block contenu %}
+{{ messages_erreur(erreurs) }}
+<form method="post" action="{{ action }}" class="formulaire carte">
+{{ champ("nom", "Nom", valeurs.nom, requis=True) }}
+{{ champ("prenom", "Prénom", valeurs.prenom, requis=True) }}
+{{ champ("date_naissance", "Date de naissance", valeurs.date_naissance, type="date") }}
+{{ select("sexe", "Sexe", options_sexe, valeurs.sexe) }}
+{{ champ("telephone", "Téléphone", valeurs.telephone, type="tel") }}
+{{ champ("email", "Email", valeurs.email, type="email") }}
+{{ champ("adresse", "Adresse", valeurs.adresse) }}
+{{ zone_texte("antecedents", "Antécédents", valeurs.antecedents) }}
+<button class="bouton" type="submit">Enregistrer</button>
+</form>
+{% endblock %}

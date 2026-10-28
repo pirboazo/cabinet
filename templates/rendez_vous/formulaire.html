@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "macros.html" import messages_erreur, champ, select %}
+{% block contenu %}
+{{ messages_erreur(erreurs) }}
+<form method="post" action="{{ action }}" class="formulaire carte">
+{{ select("patient_id", "Patient", options_patients, valeurs.patient_id, requis=True) }}
+{{ champ("date_rdv", "Date", valeurs.date_rdv, type="date", requis=True) }}
+{{ champ("heure_rdv", "Heure", valeurs.heure_rdv, type="time", requis=True) }}
+{{ champ("motif", "Motif", valeurs.motif) }}
+{% if edition %}
+{{ select("statut", "Statut", options_statut, valeurs.statut, requis=True) }}
+{% endif %}
+<button class="bouton" type="submit">Enregistrer</button>
+</form>
+{% endblock %}

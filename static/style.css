@@ -1,0 +1,31 @@
+body{font-family:system-ui,sans-serif;margin:0;color:#222;background:#f5f6f8}
+nav{display:flex;flex-wrap:wrap;gap:.5rem;padding:1rem 2rem;background:#fff;border-bottom:1px solid #ddd}
+main{max-width:1100px;margin:0 auto;padding:1.5rem 2rem}
+h1{font-size:1.6rem;margin:0 0 1.2rem}
+h2{font-size:1.1rem;margin:0 0 .6rem}
+.bouton{display:inline-block;padding:.45rem .9rem;border:0;border-radius:4px;background:#0066cc;color:#fff;font:inherit;text-decoration:none;cursor:pointer}
+.bouton:hover{filter:brightness(1.12)}
+nav .bouton{background:#555}
+nav .bouton.actif{background:#222}
+.bouton.danger{background:#b3261e}
+.carte{background:#fff;border:1px solid #ddd;border-radius:6px;padding:1rem 1.25rem;margin-bottom:1rem}
+.colonnes{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+@media (max-width:800px){.colonnes{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{text-align:left;padding:.5rem .4rem;border-bottom:1px solid #e5e5e5;vertical-align:top}
+.actions{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.barre{margin-bottom:1rem}
+.en-ligne{display:inline;margin:0}
+.vide{color:#777;font-style:italic}
+.erreurs{background:#fdecea;color:#8a1c1c;border:1px solid #f5c2c0;border-radius:6px;padding:.75rem 1rem;margin-bottom:1rem}
+.erreurs ul{margin:0;padding-left:1.2rem}
+.formulaire label{display:block;font-weight:600;margin-bottom:.9rem}
+.formulaire input,.formulaire select,.formulaire textarea{display:block;width:100%;box-sizing:border-box;margin-top:.25rem;padding:.45rem;font:inherit;font-weight:400;border:1px solid #bbb;border-radius:4px}
+.formulaire .bouton{margin-top:.5rem}
+.filtre{display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end;margin-bottom:1rem}
+.filtre label{display:flex;flex-direction:column;font-weight:600}
+.filtre select{min-width:14rem;padding:.45rem;font:inherit;font-weight:400}
+.texte{white-space:pre-wrap;margin:0}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:.4rem 1rem;margin:0}
+dt{font-weight:600}
+dd{margin:0}

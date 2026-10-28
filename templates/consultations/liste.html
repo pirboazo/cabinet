@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "macros.html" import select %}
+{% block contenu %}
+<form method="get" action="/consultations" class="filtre">
+{{ select("medecin", "Médecin", options_medecin, medecin) }}
+<button class="bouton" type="submit">Filtrer</button>
+</form>
+{% if consultations %}
+<table>
+<thead><tr><th>Patient</th><th>Médecin</th><th>Date</th></tr></thead>
+<tbody>
+{% for c in consultations %}
+<tr><td><a href="/consultations/{{ c.id }}">{{ c.nom }} {{ c.prenom }}</a></td><td>{{ c.medecin or "—" }}</td><td>{{ c.date_consultation }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class="vide">{% if medecin %}Aucun compte-rendu pour ce médecin.{% else %}Aucun compte-rendu.{% endif %}</p>
+{% endif %}
+{% endblock %}

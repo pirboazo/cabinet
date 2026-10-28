@@ -1,0 +1,33 @@
+{% macro messages_erreur(liste) %}
+{% if liste %}
+<div class="erreurs" role="alert"><ul>{% for message in liste %}<li>{{ message }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% endmacro %}
+
+{% macro champ(nom, libelle, valeur="", type="text", requis=False) %}
+<label>{{ libelle }}<input type="{{ type }}" name="{{ nom }}" value="{{ valeur }}"{% if requis %} required{% endif %}></label>
+{% endmacro %}
+
+{% macro zone_texte(nom, libelle, valeur) %}
+<label>{{ libelle }}<textarea name="{{ nom }}" rows="4">{{ valeur }}</textarea></label>
+{% endmacro %}
+
+{% macro select(nom, libelle, options, valeur, requis=False) %}
+<label>{{ libelle }}<select name="{{ nom }}"{% if requis %} required{% endif %}>{% for v, texte in options %}<option value="{{ v }}"{% if v == valeur %} selected{% endif %}>{{ texte }}</option>{% endfor %}</select></label>
+{% endmacro %}
+
+{% macro boutons_rdv(rdv_id, modifiable=True) %}
+<div class="actions">
+{% if modifiable %}<a class="bouton" href="/rendez-vous/{{ rdv_id }}/modifier">Modifier</a>{% endif %}
+<form method="post" action="/rendez-vous/{{ rdv_id }}/supprimer" class="en-ligne" onsubmit="return confirm('Supprimer ce rendez-vous ? Les comptes-rendus liés seront conservés.');">
+<button class="bouton danger" type="submit">Supprimer</button>
+</form>
+</div>
+{% endmacro %}
+
+{% macro boutons_consultation(consultation_id) %}
+<div class="actions">
+<a class="bouton" href="/consultations/{{ consultation_id }}">Voir</a>
+<a class="bouton" href="/consultations/{{ consultation_id }}/modifier">Modifier</a>
+</div>
+{% endmacro %}

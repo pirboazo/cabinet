@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "macros.html" import boutons_rdv, boutons_consultation %}
+{% block contenu %}
+<section class="carte">
+<dl>
+<dt>Date de naissance</dt><dd>{{ patient.date_naissance or "—" }}</dd>
+<dt>Sexe</dt><dd>{{ patient.sexe or "—" }}</dd>
+<dt>Téléphone</dt><dd>{{ patient.telephone or "—" }}</dd>
+<dt>Email</dt><dd>{{ patient.email or "—" }}</dd>
+<dt>Adresse</dt><dd>{{ patient.adresse or "—" }}</dd>
+<dt>Antécédents</dt><dd class="texte">{{ patient.antecedents or "—" }}</dd>
+</dl>
+</section>
+<div class="actions barre">
+<a class="bouton" href="/rendez-vous/nouveau?patient_id={{ patient.id }}">Prendre un rendez-vous</a>
+<a class="bouton" href="/patients/{{ patient.id }}/modifier">Modifier le patient</a>
+<a class="bouton" href="/consultations/nouveau?patient_id={{ patient.id }}">Rédiger un compte-rendu</a>
+</div>
+<div class="colonnes">
+<section class="carte">
+<h2>Rendez-vous</h2>
+{% if rendez_vous %}
+<table>
+<thead><tr><th>Date</th><th>Heure</th><th>Motif</th><th>Statut</th><th></th></tr></thead>
+<tbody>
+{% for r in rendez_vous %}
+<tr><td>{{ r.date_rdv }}</td><td>{{ r.heure_rdv }}</td><td>{{ r.motif or "—" }}</td><td>{{ r.statut or "—" }}</td><td>{{ boutons_rdv(r.id, not r.a_compte_rendu) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class="vide">Aucun rendez-vous.</p>
+{% endif %}
+</section>
+<section class="carte">
+<h2>Comptes-rendus de consultation</h2>
+{% if consultations %}
+<table>
+<thead><tr><th>Date</th><th>Médecin</th><th>Motif</th><th></th></tr></thead>
+<tbody>
+{% for c in consultations %}
+<tr><td>{{ c.date_consultation }}</td><td>{{ c.medecin or "—" }}</td><td>{{ c.motif or "—" }}</td><td>{{ boutons_consultation(c.id) }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% else %}
+<p class="vide">Aucun compte-rendu de consultation.</p>
+{% endif %}
+</section>
+</div>
+{% endblock %}

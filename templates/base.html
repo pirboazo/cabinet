@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ titre }} · Cabinet de neurologie</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<nav>
+{% for adresse, libelle in pages %}
+{% set courante = request.path == adresse or request.path.startswith(adresse ~ "/") %}
+<a class="bouton{% if courante %} actif{% endif %}" href="{{ adresse }}"{% if courante %} aria-current="page"{% endif %}>{{ libelle }}</a>
+{% endfor %}
+</nav>
+<main>
+<h1>{{ titre }}</h1>
+{% block contenu %}{% endblock %}
+</main>
+</body>
+</html>
