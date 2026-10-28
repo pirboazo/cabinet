@@ -13,4 +13,9 @@
 {% else %}
 <p class="vide">Aucun patient.</p>
 {% endif %}
+<div class="actions barre">
+{% if page > 1 %}<a class="bouton" href="/patients?page={{ page - 1 }}">Page précédente</a>{% endif %}
+<span>Page {{ page }} sur {{ nombre_pages }} · {{ total }} au total</span>
+{% if page < nombre_pages %}<a class="bouton" href="/patients?page={{ page + 1 }}">Page suivante</a>{% endif %}
+</div>
 {% endblock %}

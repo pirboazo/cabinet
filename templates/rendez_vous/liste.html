@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 {% from "macros.html" import boutons_rdv %}
 {% block contenu %}
+<form class="actions barre" method="get" action="/rendez-vous">
+<label>Affichage
+<select name="vue">
+<option value="tous"{% if vue == "tous" %} selected{% endif %}>Tous</option>
+<option value="jour"{% if vue == "jour" %} selected{% endif %}>Jour</option>
+<option value="semaine"{% if vue == "semaine" %} selected{% endif %}>Semaine</option>
+</select>
+</label>
+<label>Date <input type="date" name="date" value="{{ reference }}"></label>
+<button class="bouton" type="submit">Filtrer</button>
+<span>{{ periode }}</span>
+</form>
 {% if rendez_vous %}
 <table>
 <thead><tr><th>Date</th><th>Heure</th><th>Durée</th><th>Patient</th><th>Motif</th><th>Statut</th><th></th></tr></thead>

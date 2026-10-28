@@ -41,6 +41,8 @@ HEURE_DEBUT_AGENDA = 8
 HEURE_FIN_AGENDA = 18
 PIXELS_PAR_MINUTE = 2
 JOURS_OUVRES = ("lundi", "mardi", "mercredi", "jeudi", "vendredi")
+PATIENTS_PAR_PAGE = 12
+VUES_RENDEZ_VOUS = ("tous", "jour", "semaine")
 
 CHAMPS_CONSULTATION = (
     "patient_id",
@@ -340,11 +342,23 @@ def accueil():
 @app.get("/patients")
 def liste_patients():
     with closing(se_connecter_a_la_base()) as db:
+        total = db.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
+        nombre_pages = (total + PATIENTS_PAR_PAGE - 1) // PATIENTS_PAR_PAGE or 1
+        page = min(entier_valide(request.args.get("page", "")) or 1, nombre_pages)
         patients = db.execute(
             """SELECT id, nom, prenom, date_naissance FROM patients
-               ORDER BY nom COLLATE NOCASE, prenom COLLATE NOCASE, id"""
+               ORDER BY nom COLLATE NOCASE, prenom COLLATE NOCASE, id
+               LIMIT ? OFFSET ?""",
+            (PATIENTS_PAR_PAGE, (page - 1) * PATIENTS_PAR_PAGE),
         ).fetchall()
-    return render_template("patients/liste.html", titre="Patients", patients=patients)
+    return render_template(
+        "patients/liste.html",
+        titre="Patients",
+        patients=patients,
+        page=page,
+        nombre_pages=nombre_pages,
+        total=total,
+    )
 
 
 @app.route("/patients/nouveau", methods=["GET", "POST"])
@@ -432,16 +446,40 @@ def modifier_patient(patient_id):
 
 @app.get("/rendez-vous")
 def liste_rendez_vous():
+    vue = request.args.get("vue", "tous")
+    if vue not in VUES_RENDEZ_VOUS:
+        vue = "tous"
+    reference = request.args.get("date", "")
+    if not date_valide(reference):
+        reference = date.today().isoformat()
+    jour = date.fromisoformat(reference)
+    if vue == "jour":
+        debut, fin = jour, jour
+        periode = f"Rendez-vous du {jour:%d/%m/%Y}"
+    elif vue == "semaine":
+        debut = jour - timedelta(days=jour.weekday())
+        fin = debut + timedelta(days=6)
+        periode = f"Semaine du {debut:%d/%m/%Y} au {fin:%d/%m/%Y}"
+    else:
+        debut, fin = date.min, date.max
+        periode = "Tous les rendez-vous"
     with closing(se_connecter_a_la_base()) as db:
         rendez_vous = db.execute(
             """SELECT r.id, r.date_rdv, r.heure_rdv, r.duree_minutes, r.motif, r.statut,
                       p.id AS patient_id, p.nom, p.prenom,
                       EXISTS (SELECT 1 FROM consultations c WHERE c.rendez_vous_id = r.id) AS a_compte_rendu
                FROM rendez_vous r JOIN patients p ON p.id = r.patient_id
-               ORDER BY r.date_rdv, r.heure_rdv, r.id"""
+               WHERE r.date_rdv BETWEEN ? AND ?
+               ORDER BY r.date_rdv, r.heure_rdv, r.id""",
+            (debut.isoformat(), fin.isoformat()),
         ).fetchall()
     return render_template(
-        "rendez_vous/liste.html", titre="Rendez-vous", rendez_vous=rendez_vous
+        "rendez_vous/liste.html",
+        titre="Rendez-vous",
+        rendez_vous=rendez_vous,
+        vue=vue,
+        reference=reference,
+        periode=periode,
     )
 
 

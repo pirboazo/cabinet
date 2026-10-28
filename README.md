@@ -6,9 +6,9 @@ Le fonctionnement détaillé (routes, règles de validation, modèle de données
 
 ## Fonctionnalités
 
-- Patients : création, fiche, modification.
-- Rendez-vous : prise, modification, suppression (les comptes-rendus liés sont conservés). Deux rendez-vous non annulés ne peuvent pas se chevaucher le même jour.
-- Agenda hebdomadaire : semaine du lundi au vendredi (jours ouvrés), de 8 h à 18 h, rendez-vous de 20 min à 1 h. Les rendez-vous du week-end ne sont pas affichés.
+- Patients : création, fiche, modification. Liste paginée, 12 patients par page.
+- Rendez-vous : prise, modification, suppression (les comptes-rendus liés sont conservés). Deux rendez-vous non annulés ne peuvent pas se chevaucher le même jour. Liste filtrable par jour ou par semaine.
+- Agenda hebdomadaire : semaine du lundi au vendredi (jours ouvrés), de 8 h à 18 h, rendez-vous de 20 min à 1 h. Les rendez-vous du week-end n'apparaissent pas dans l'agenda.
 - Comptes-rendus de consultation : saisie, détail, modification, filtre par médecin.
 
 ## Stack
