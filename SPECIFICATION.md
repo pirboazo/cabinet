@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.2 |
+| Version | 1.3 |
 | Date | 2026-10-28 |
 | Portée | Application web locale de gestion des patients, rendez-vous et comptes-rendus de consultation |
 | Licence | MIT (fichier `LICENSE`) |
@@ -12,7 +12,7 @@
 Application Flask mono-utilisateur permettant de :
 
 - gérer le fichier patients (création, consultation, modification) ;
-- planifier, modifier et supprimer des rendez-vous ;
+- planifier, modifier et supprimer des rendez-vous, et consulter l'agenda hebdomadaire ;
 - rédiger, consulter, filtrer et modifier des comptes-rendus de consultation ;
 - naviguer d'un patient vers ses rendez-vous et ses comptes-rendus.
 
@@ -40,7 +40,8 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 | GET, POST | `/patients/nouveau` | `nouveau_patient` | Formulaire de création ; succès → `/patients/<id>` |
 | GET | `/patients/<id>` | `fiche_patient` | Identité, rendez-vous et comptes-rendus du patient ; 404 si inconnu |
 | GET, POST | `/patients/<id>/modifier` | `modifier_patient` | Formulaire pré-rempli ; succès → `/patients/<id>` ; 404 si inconnu |
-| GET | `/rendez-vous` | `liste_rendez_vous` | Tous les RDV (date, heure, patient, motif, statut) avec boutons Supprimer et, sauf si un compte-rendu est lié, Modifier |
+| GET | `/rendez-vous` | `liste_rendez_vous` | Tous les RDV (date, heure, durée, patient, motif, statut) avec boutons Supprimer et, sauf si un compte-rendu est lié, Modifier |
+| GET | `/agenda` | `agenda` | Vue hebdomadaire du lundi au vendredi (jours ouvrés), grille 08:00–18:00 ; `?semaine=AAAA-MM-JJ` (toute date de la semaine) ; date absente ou invalide → semaine courante ; RDV hors plage listés sous la grille ; RDV du samedi et du dimanche non affichés |
 | GET, POST | `/rendez-vous/nouveau` | `nouveau_rendez_vous` | Formulaire de prise de RDV ; `?patient_id=` présélectionne le patient ; succès → `/patients/<patient>` |
 | GET, POST | `/rendez-vous/<id>/modifier` | `modifier_rendez_vous` | Formulaire pré-rempli, statut modifiable ; succès → `/rendez-vous` ; 404 si inconnu ; 403 si un compte-rendu est lié au RDV |
 | POST | `/rendez-vous/<id>/supprimer` | `supprimer_rendez_vous` | Supprime le RDV ; GET → 405 ; 404 si inconnu ; succès → `/rendez-vous` |
@@ -51,7 +52,7 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 
 ### 3.2 Navigation et présentation
 
-- Menu permanent en haut de page : **Patients**, **Rendez-vous**, **Consultations**. L'entrée courante est mise en évidence (classe `actif`).
+- Menu permanent en haut de page : **Patients**, **Rendez-vous**, **Agenda**, **Consultations**. L'entrée courante est mise en évidence (classe `actif`).
 - Le menu et les boutons d'action partagent la forme « bouton » ; le menu est gris (`#555`), les actions sont bleues (`#0066cc`), les suppressions rouges (`.danger`).
 - Toutes les pages partagent le même squelette HTML (`<!DOCTYPE html>`, `<head>` avec CSS externe, `<nav>`, `<main>`, `<h1>`) fourni par le gabarit `templates/base.html`.
 
@@ -62,7 +63,7 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 **Fiche** :
 - identité : date de naissance, sexe, téléphone, email, adresse, antécédents ;
 - actions : prendre un rendez-vous, modifier le patient, rédiger un compte-rendu ;
-- section « Rendez-vous » : date, heure, motif, statut + boutons Supprimer et, sauf si un compte-rendu est lié, Modifier ;
+- section « Rendez-vous » : date, heure, durée, motif, statut + boutons Supprimer et, sauf si un compte-rendu est lié, Modifier ;
 - section « Comptes-rendus de consultation » : date, médecin, motif + boutons Voir / Modifier ;
 - messages dédiés si une section est vide.
 - section  « Rendez-vous » et « Comptes-rendus de consultation » en parralelle dans la page sous les informations patients
@@ -72,8 +73,9 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 ### 3.4 Domaine « Rendez-vous »
 
 - Liste globale triée par date puis heure, croissantes.
-- Création : patient obligatoire, date et heure obligatoires, motif facultatif ; statut forcé à `prévu`.
-- Modification : patient, date, heure, motif et statut (`prévu`, `honoré`, `annulé`). Interdite si un compte-rendu est lié au RDV : la route répond `403` et le bouton Modifier n'est pas affiché.
+- Création : patient obligatoire, date et heure obligatoires, durée obligatoire (de 20 à 60 min par pas de 5, 30 min pré-remplies), motif facultatif ; statut forcé à `prévu`.
+- Modification : patient, date, heure, durée, motif et statut (`prévu`, `honoré`, `annulé`). Interdite si un compte-rendu est lié au RDV : la route répond `403` et le bouton Modifier n'est pas affiché.
+- Chevauchement interdit, à la création comme à la modification : un RDV ne peut pas chevaucher un autre RDV du même jour dont le statut n'est pas `annulé`. Un RDV `annulé` ne bloque pas son créneau et n'est pas bloqué par les autres. Deux RDV qui se touchent (l'un finit à l'heure où l'autre commence) sont acceptés. Le RDV modifié n'est pas comparé à lui-même.
 - Suppression : uniquement en `POST`, avec confirmation navigateur. Les comptes-rendus liés sont conservés : leur `rendez_vous_id` est mis à `NULL`.
 
 ### 3.5 Domaine « Consultations »
@@ -83,6 +85,14 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 - Saisie : patient obligatoire, date obligatoire (pré-remplie au jour courant), rendez-vous facultatif (liste de tous les RDV, libellé « date heure · NOM Prénom · motif »), motif / observations / diagnostic / traitement / médecin facultatifs.
 - Détail : patient cliquable, médecin, date, rendez-vous lié éventuel, puis motif, observations, diagnostic, traitement ; `—` pour un champ vide ; bouton « Modifier ce compte-rendu ».
 - Modification : même formulaire que la saisie, pré-rempli.
+
+### 3.6 Agenda hebdomadaire
+
+- Semaine du lundi au vendredi (jours ouvrés), une colonne par jour (titre « jour JJ/MM ») et une grille de 08:00 à 18:00. Les RDV du samedi et du dimanche ne sont pas affichés. Une minute vaut 2 px : un RDV démarre à son heure et occupe une hauteur proportionnelle à sa durée.
+- Navigation : boutons « Semaine précédente », « Semaine courante » et « Semaine suivante » ; l'intervalle affiché (« Du JJ/MM/AAAA au JJ/MM/AAAA ») est rappelé.
+- Chaque bloc renvoie à la fiche du patient ; le style du bloc dépend du statut, et une pastille « CR » signale un compte-rendu lié.
+- Un RDV qui commence avant 08:00 ou à partir de 18:00 n'est pas dessiné : il figure dans la section « Hors plage 8 h – 18 h » sous la grille. Un RDV qui commence avant 18:00 et finit après est tronqué à la grille.
+- L'application n'enregistre pas de chevauchement (§3.4). Seule une base modifiée hors application peut en contenir ; l'agenda les affiche alors superposés.
 
 ## 4. Règles de validation
 
@@ -94,6 +104,8 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 | RDV | `patient_id` | entier désignant un patient existant | « Merci de choisir un patient. » |
 | RDV | `date_rdv`, `heure_rdv` | date `AAAA-MM-JJ` et heure `HH:MM` valides | « Merci de saisir une date et une heure valides. » |
 | RDV (édition) | `statut` | `prévu`, `honoré` ou `annulé` | « Le statut choisi n'est pas valide. » |
+| RDV | `duree_minutes` | entier de 20 à 60 par pas de 5 | « La durée choisie n'est pas valide. » |
+| RDV | `date_rdv`, `heure_rdv`, `duree_minutes` | aucun autre RDV du même jour, non `annulé`, ne chevauche le créneau (si le RDV enregistré n'est pas `annulé`) | « Ce créneau chevauche un autre rendez-vous. » |
 | Consultation | `patient_id` | entier désignant un patient existant | « Merci de choisir un patient. » |
 | Consultation | `rendez_vous_id` | vide, ou RDV existant appartenant au patient choisi | « Le rendez-vous choisi n'existe pas. » / « Le rendez-vous choisi n'appartient pas à ce patient. » |
 | Consultation | `date_consultation` | date `AAAA-MM-JJ` valide | « Merci de saisir une date valide. » |
@@ -137,6 +149,7 @@ CREATE TABLE rendez_vous (
     heure_rdv TIME NOT NULL,
     motif TEXT,
     statut TEXT DEFAULT 'prévu',
+    duree_minutes INTEGER NOT NULL DEFAULT 30 CHECK (duree_minutes BETWEEN 20 AND 60),
     FOREIGN KEY (patient_id) REFERENCES patients (id)
 );
 
@@ -159,6 +172,7 @@ CREATE TABLE consultations (
 
 - SQLite est utilisé sans `PRAGMA foreign_keys = ON` : les clés étrangères sont déclaratives. L'application vérifie l'existence du patient et l'appartenance du RDV au patient lors de la saisie d'un compte-rendu ; un RDV lié à un compte-rendu n'est plus modifiable (§3.4).
 - Dates et heures sont stockées en texte (`AAAA-MM-JJ`, `HH:MM`) ; `date_creation` est renseignée automatiquement.
+- La durée est un entier de minutes : la contrainte `CHECK` limite le schéma à 20–60 min, l'application valide le pas de 5 min. Le chevauchement des RDV n'est contrôlé que par l'application (§3.4), pas par le schéma.
 - Suppression d'un RDV : `consultations.rendez_vous_id` des comptes-rendus liés passe à `NULL`, les comptes-rendus sont conservés.
 - Il n'existe aucune suppression de patient ni de compte-rendu.
 
@@ -179,7 +193,7 @@ cabinet-neurologie/
 │   ├── base.html           # squelette commun : head, menu, main
 │   ├── macros.html         # messages, champs, listes, boutons
 │   ├── patients/           # liste.html, fiche.html, formulaire.html
-│   ├── rendez_vous/        # liste.html, formulaire.html
+│   ├── rendez_vous/        # liste.html, formulaire.html, agenda.html
 │   └── consultations/      # liste.html, detail.html, formulaire.html
 └── database/
     ├── cabinet.db          # base SQLite
@@ -196,11 +210,12 @@ Le venv local et les fichiers de clés ne font pas partie de l'application et ne
 | `PAGES` | Rubriques du menu (adresse + libellé), injectées dans tous les gabarits par `injecter_menu()` |
 | `se_connecter_a_la_base()` | Ouvre `database/cabinet.db` avec `row_factory = sqlite3.Row` |
 | `CHAMPS_PATIENT`, `SEXES`, `OPTIONS_SEXE` | Constantes et options du formulaire patient |
-| `CHAMPS_RDV`, `STATUTS_RDV`, `OPTIONS_STATUT` | Constantes et options du formulaire RDV |
+| `CHAMPS_RDV`, `DUREES_RDV`, `STATUTS_RDV`, `OPTIONS_STATUT`, `OPTIONS_DUREE` | Constantes et options du formulaire RDV (durée de 20 à 60 min) |
 | `CHAMPS_CONSULTATION` | Constantes du formulaire de compte-rendu |
 | `valeurs_depuis_formulaire()`, `valeurs_depuis_ligne()` | Lecture des champs saisis, ou des lignes SQLite pour pré-remplir un formulaire |
 | `erreur_formulaire_patient()`, `valider_rendez_vous()`, `valider_consultation()` | Validation ; toutes les erreurs d'un formulaire sont collectées |
 | `options_patients()`, `options_rendez_vous()` | Options des listes déroulantes ; libellé RDV « date heure · NOM Prénom · motif » |
+| `rendez_vous_chevauche()`, `lundi_de_la_semaine()`, `position_dans_grille()` | Contrôle de chevauchement des RDV non annulés ; calcul de la semaine affichée et de la position des blocs dans la grille de la route `agenda()` |
 | `rendre_formulaire_patient()`, `rendre_formulaire_rendez_vous()`, `rendre_formulaire_consultation()` | Rendu des formulaires via `render_template` |
 | Routes | Lecture SQLite, validation, écriture avec `commit()`, redirections, `render_template` pour les pages |
 
@@ -234,7 +249,7 @@ flowchart TD
 - Aucune authentification, aucun contrôle d'accès, aucun jeton CSRF : usage local uniquement.
 - `app.run(debug=True)` : mode développement à ne pas exposer.
 - Pas de pagination, de recherche patient, ni de tri configurable.
-- Pas de contrôle de chevauchement des rendez-vous.
+- Le contrôle de chevauchement (§3.4) ne s'applique que par l'application : une base modifiée hors application peut contenir des RDV qui se chevauchent, que l'agenda affiche alors superposés.
 - Email et téléphone non validés côté serveur (seuls les `type="email"` / `type="tel"` HTML guident la saisie).
 - Suppression limitée aux rendez-vous ; patients et comptes-rendus ne sont pas supprimables via l'interface.
 - Le filtre des consultations porte sur une égalité stricte de la chaîne `medecin`.
@@ -253,6 +268,14 @@ python3 database/peupler_donnees.py    # jeu de données fictif, optionnel
 python3 app.py                         # http://127.0.0.1:5000/
 ```
 
+Base créée avant la version 1.3 : ajouter la colonne `duree_minutes` une seule fois, après une sauvegarde de `database/cabinet.db` :
+
+```bash
+venv/bin/python -c "import sqlite3; c = sqlite3.connect('database/cabinet.db'); c.execute('ALTER TABLE rendez_vous ADD COLUMN duree_minutes INTEGER NOT NULL DEFAULT 30 CHECK (duree_minutes BETWEEN 20 AND 60)'); c.commit()"
+```
+
 ## 9. Vérification
 
 Le comportement décrit a été vérifié avec le client de test Flask sur une copie de la base (routes 200/302/404/405, branches de validation sans écriture, redirections après écriture, échappement des saisies, suppression d'un RDV lié à un compte-rendu, filtre par médecin) et par un lancement du serveur réel (`app.py`) avec requêtes GET sur les pages principales et sur `/static/style.css`.
+
+Version 1.3 (agenda, durée, chevauchement) : vérifiée avec le client de test Flask sur une base temporaire (29 contrôles, puis 14 contrôles de chevauchement, scripts supprimés), puis sur une copie de `database/cabinet.db` migrée (pages principales, `/agenda`, `/rendez-vous/<id>/modifier` en 403 pour un RDV lié à un compte-rendu). Le rendu de la grille a été validé à l'écran.

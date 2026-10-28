@@ -21,10 +21,10 @@
 <h2>Rendez-vous</h2>
 {% if rendez_vous %}
 <table>
-<thead><tr><th>Date</th><th>Heure</th><th>Motif</th><th>Statut</th><th></th></tr></thead>
+<thead><tr><th>Date</th><th>Heure</th><th>Durée</th><th>Motif</th><th>Statut</th><th></th></tr></thead>
 <tbody>
 {% for r in rendez_vous %}
-<tr><td>{{ r.date_rdv }}</td><td>{{ r.heure_rdv }}</td><td>{{ r.motif or "—" }}</td><td>{{ r.statut or "—" }}</td><td>{{ boutons_rdv(r.id, not r.a_compte_rendu) }}</td></tr>
+<tr><td>{{ r.date_rdv }}</td><td>{{ r.heure_rdv }}</td><td>{{ r.duree_minutes }} min</td><td>{{ r.motif or "—" }}</td><td>{{ r.statut or "—" }}</td><td>{{ boutons_rdv(r.id, not r.a_compte_rendu) }}</td></tr>
 {% endfor %}
 </tbody>
 </table>

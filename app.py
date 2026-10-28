@@ -3,7 +3,7 @@
 import re
 import sqlite3
 from contextlib import closing
-from datetime import date, time
+from datetime import date, time, timedelta
 from pathlib import Path
 
 from flask import Flask, abort, redirect, render_template, request
@@ -15,6 +15,7 @@ app = Flask(__name__)
 PAGES = (
     ("/patients", "Patients"),
     ("/rendez-vous", "Rendez-vous"),
+    ("/agenda", "Agenda"),
     ("/consultations", "Consultations"),
 )
 
@@ -30,9 +31,16 @@ CHAMPS_PATIENT = (
 )
 SEXES = ("", "F", "M", "Autre")
 
-CHAMPS_RDV = ("patient_id", "date_rdv", "heure_rdv", "motif", "statut")
+CHAMPS_RDV = ("patient_id", "date_rdv", "heure_rdv", "duree_minutes", "motif", "statut")
 STATUTS_RDV = ("prévu", "honoré", "annulé")
 STATUT_RDV_INITIAL = "prévu"
+DUREES_RDV = tuple(range(20, 61, 5))
+OPTIONS_DUREE = [(str(duree), f"{duree} min") for duree in DUREES_RDV]
+DUREE_RDV_INITIALE = 30
+HEURE_DEBUT_AGENDA = 8
+HEURE_FIN_AGENDA = 18
+PIXELS_PAR_MINUTE = 2
+JOURS_OUVRES = ("lundi", "mardi", "mercredi", "jeudi", "vendredi")
 
 CHAMPS_CONSULTATION = (
     "patient_id",
@@ -155,7 +163,28 @@ def valeurs_depuis_formulaire_rdv():
     return valeurs_depuis_formulaire(CHAMPS_RDV)
 
 
-def valider_rendez_vous(valeurs, db):
+def minutes_depuis_minuit(heure):
+    heures, minutes = map(int, heure.split(":"))
+    return heures * 60 + minutes
+
+
+def rendez_vous_chevauche(db, date_rdv, heure_rdv, duree, rdv_id):
+    """Vrai si un autre rendez-vous non annulé occupe une partie du créneau."""
+    debut = minutes_depuis_minuit(heure_rdv)
+    fin = debut + duree
+    autres = db.execute(
+        """SELECT heure_rdv, duree_minutes FROM rendez_vous
+           WHERE date_rdv = ? AND statut <> ? AND id IS NOT ?""",
+        (date_rdv, "annulé", rdv_id),
+    ).fetchall()
+    return any(
+        debut < minutes_depuis_minuit(autre["heure_rdv"]) + autre["duree_minutes"]
+        and minutes_depuis_minuit(autre["heure_rdv"]) < fin
+        for autre in autres
+    )
+
+
+def valider_rendez_vous(valeurs, db, rdv_id=None):
     erreurs = []
     if not patient_existe(db, entier_valide(valeurs["patient_id"])):
         erreurs.append("Merci de choisir un patient.")
@@ -163,6 +192,22 @@ def valider_rendez_vous(valeurs, db):
         erreurs.append("Merci de saisir une date et une heure valides.")
     if valeurs["statut"] not in STATUTS_RDV:
         erreurs.append("Le statut choisi n'est pas valide.")
+    if entier_valide(valeurs["duree_minutes"]) not in DUREES_RDV:
+        erreurs.append("La durée choisie n'est pas valide.")
+    if (
+        date_valide(valeurs["date_rdv"])
+        and heure_valide(valeurs["heure_rdv"])
+        and entier_valide(valeurs["duree_minutes"]) in DUREES_RDV
+        and valeurs["statut"] != "annulé"
+        and rendez_vous_chevauche(
+            db,
+            valeurs["date_rdv"],
+            valeurs["heure_rdv"],
+            int(valeurs["duree_minutes"]),
+            rdv_id,
+        )
+    ):
+        erreurs.append("Ce créneau chevauche un autre rendez-vous.")
     return erreurs
 
 
@@ -171,6 +216,7 @@ def parametres_rendez_vous(valeurs):
         int(valeurs["patient_id"]),
         valeurs["date_rdv"],
         valeurs["heure_rdv"],
+        int(valeurs["duree_minutes"]),
         valeur_optionnelle(valeurs["motif"]),
         valeurs["statut"],
     )
@@ -265,6 +311,7 @@ def rendre_formulaire_rendez_vous(titre, action, valeurs, patients, erreurs, edi
         valeurs=valeurs,
         options_patients=options_patients(patients),
         options_statut=OPTIONS_STATUT,
+        options_duree=OPTIONS_DUREE,
         erreurs=erreurs,
         edition=edition,
     )
@@ -332,7 +379,7 @@ def fiche_patient(patient_id):
         if patient is None:
             abort(404)
         rendez_vous = db.execute(
-            """SELECT r.id, r.date_rdv, r.heure_rdv, r.motif, r.statut,
+            """SELECT r.id, r.date_rdv, r.heure_rdv, r.duree_minutes, r.motif, r.statut,
                       EXISTS (SELECT 1 FROM consultations c WHERE c.rendez_vous_id = r.id) AS a_compte_rendu
                FROM rendez_vous r
                WHERE r.patient_id = ? ORDER BY r.date_rdv, r.heure_rdv, r.id""",
@@ -387,7 +434,7 @@ def modifier_patient(patient_id):
 def liste_rendez_vous():
     with closing(se_connecter_a_la_base()) as db:
         rendez_vous = db.execute(
-            """SELECT r.id, r.date_rdv, r.heure_rdv, r.motif, r.statut,
+            """SELECT r.id, r.date_rdv, r.heure_rdv, r.duree_minutes, r.motif, r.statut,
                       p.id AS patient_id, p.nom, p.prenom,
                       EXISTS (SELECT 1 FROM consultations c WHERE c.rendez_vous_id = r.id) AS a_compte_rendu
                FROM rendez_vous r JOIN patients p ON p.id = r.patient_id
@@ -395,6 +442,66 @@ def liste_rendez_vous():
         ).fetchall()
     return render_template(
         "rendez_vous/liste.html", titre="Rendez-vous", rendez_vous=rendez_vous
+    )
+
+
+def lundi_de_la_semaine(valeur):
+    """Renvoie le lundi de la semaine contenant la date donnée, ou celui de la semaine courante."""
+    try:
+        reference = date.fromisoformat(valeur)
+    except ValueError:
+        reference = date.today()
+    return reference - timedelta(days=reference.weekday())
+
+
+def position_dans_grille(heure, duree):
+    """Renvoie (haut, hauteur) en pixels, ou None si le rendez-vous est hors de la plage affichée."""
+    heures, minutes = map(int, heure.split(":"))
+    depuis_debut = heures * 60 + minutes - HEURE_DEBUT_AGENDA * 60
+    if not 0 <= depuis_debut < (HEURE_FIN_AGENDA - HEURE_DEBUT_AGENDA) * 60:
+        return None
+    return depuis_debut * PIXELS_PAR_MINUTE, duree * PIXELS_PAR_MINUTE
+
+
+@app.get("/agenda")
+def agenda():
+    lundi = lundi_de_la_semaine(request.args.get("semaine", ""))
+    vendredi = lundi + timedelta(days=4)
+    with closing(se_connecter_a_la_base()) as db:
+        rendez_vous = db.execute(
+            """SELECT r.id, r.date_rdv, r.heure_rdv, r.duree_minutes, r.motif, r.statut,
+                      p.id AS patient_id, p.nom, p.prenom,
+                      EXISTS (SELECT 1 FROM consultations c WHERE c.rendez_vous_id = r.id) AS a_compte_rendu
+               FROM rendez_vous r JOIN patients p ON p.id = r.patient_id
+               WHERE r.date_rdv BETWEEN ? AND ?
+               ORDER BY r.date_rdv, r.heure_rdv, r.id""",
+            (lundi.isoformat(), vendredi.isoformat()),
+        ).fetchall()
+    colonnes = [
+        {"libelle": f"{JOURS_OUVRES[i]} {lundi + timedelta(days=i):%d/%m}", "blocs": []}
+        for i in range(len(JOURS_OUVRES))
+    ]
+    hors_plage = []
+    for rdv in rendez_vous:
+        position = position_dans_grille(rdv["heure_rdv"], rdv["duree_minutes"])
+        if position is None:
+            hors_plage.append(rdv)
+        else:
+            index = (date.fromisoformat(rdv["date_rdv"]) - lundi).days
+            colonnes[index]["blocs"].append((rdv, *position))
+    return render_template(
+        "rendez_vous/agenda.html",
+        titre="Agenda",
+        colonnes=colonnes,
+        hors_plage=hors_plage,
+        lundi=lundi,
+        vendredi=vendredi,
+        semaine_precedente=(lundi - timedelta(days=7)).isoformat(),
+        semaine_suivante=(lundi + timedelta(days=7)).isoformat(),
+        heure_debut=HEURE_DEBUT_AGENDA,
+        heure_fin=HEURE_FIN_AGENDA,
+        hauteur_grille=(HEURE_FIN_AGENDA - HEURE_DEBUT_AGENDA) * 60 * PIXELS_PAR_MINUTE,
+        hauteur_heure=60 * PIXELS_PAR_MINUTE,
     )
 
 
@@ -410,8 +517,8 @@ def nouveau_rendez_vous():
                 parametres = parametres_rendez_vous(valeurs)
                 db.execute(
                     """INSERT INTO rendez_vous
-                       (patient_id, date_rdv, heure_rdv, motif, statut)
-                       VALUES (?, ?, ?, ?, ?)""",
+                       (patient_id, date_rdv, heure_rdv, duree_minutes, motif, statut)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
                     parametres,
                 )
                 db.commit()
@@ -420,6 +527,7 @@ def nouveau_rendez_vous():
             valeurs = {champ: "" for champ in CHAMPS_RDV}
             valeurs["patient_id"] = request.args.get("patient_id", "")
             valeurs["statut"] = STATUT_RDV_INITIAL
+            valeurs["duree_minutes"] = str(DUREE_RDV_INITIALE)
             erreurs = []
     return rendre_formulaire_rendez_vous(
         "Nouveau rendez-vous",
@@ -435,7 +543,7 @@ def nouveau_rendez_vous():
 def modifier_rendez_vous(rdv_id):
     with closing(se_connecter_a_la_base()) as db:
         rdv = db.execute(
-            """SELECT id, patient_id, date_rdv, heure_rdv, motif, statut
+            """SELECT id, patient_id, date_rdv, heure_rdv, duree_minutes, motif, statut
                FROM rendez_vous WHERE id = ?""",
             (rdv_id,),
         ).fetchone()
@@ -450,11 +558,11 @@ def modifier_rendez_vous(rdv_id):
         patients = patients_pour_selection(db)
         if request.method == "POST":
             valeurs = valeurs_depuis_formulaire_rdv()
-            erreurs = valider_rendez_vous(valeurs, db)
+            erreurs = valider_rendez_vous(valeurs, db, rdv_id)
             if not erreurs:
                 db.execute(
                     """UPDATE rendez_vous SET patient_id = ?, date_rdv = ?, heure_rdv = ?,
-                       motif = ?, statut = ? WHERE id = ?""",
+                       duree_minutes = ?, motif = ?, statut = ? WHERE id = ?""",
                     parametres_rendez_vous(valeurs) + (rdv_id,),
                 )
                 db.commit()

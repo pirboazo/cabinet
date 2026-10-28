@@ -26,17 +26,17 @@ PATIENTS = [
      "3 place du Marché, 44000 Nantes", "Neuropathie périphérique"),
 ]
 
-# (index patient, date, heure, motif, statut)
+# (index patient, date, heure, motif, statut, durée en minutes)
 RENDEZ_VOUS = [
-    (0, "2026-10-05", "09:00", "Bilan céphalées", "honoré"),
-    (0, "2026-11-09", "09:30", "Contrôle du traitement", "prévu"),
-    (1, "2026-10-06", "10:15", "Tremblements des mains", "honoré"),
-    (1, "2026-10-20", "14:00", "Suivi", "annulé"),
-    (2, "2026-10-07", "11:00", "Crise tonico-clonique nocturne", "honoré"),
-    (2, "2026-11-12", "08:45", "Bilan EEG", "prévu"),
-    (3, "2026-10-08", "16:30", None, "honoré"),
-    (4, "2026-11-03", "15:00", "Première consultation", "prévu"),
-    (5, "2026-10-12", "09:15", "Douleurs et fourmillements des pieds", "honoré"),
+    (0, "2026-10-05", "09:00", "Bilan céphalées", "honoré", 45),
+    (0, "2026-11-09", "09:30", "Contrôle du traitement", "prévu", 20),
+    (1, "2026-10-06", "10:15", "Tremblements des mains", "honoré", 30),
+    (1, "2026-10-20", "14:00", "Suivi", "annulé", 30),
+    (2, "2026-10-07", "11:00", "Crise tonico-clonique nocturne", "honoré", 60),
+    (2, "2026-11-12", "08:45", "Bilan EEG", "prévu", 60),
+    (3, "2026-10-08", "16:30", None, "honoré", 30),
+    (4, "2026-11-03", "15:00", "Première consultation", "prévu", 60),
+    (5, "2026-10-12", "09:15", "Douleurs et fourmillements des pieds", "honoré", 45),
 ]
 
 # (index patient, index rendez-vous ou None, date, motif, observations, diagnostic, traitement, médecin)
@@ -82,11 +82,11 @@ def main():
             ids_patients.append(curseur.lastrowid)
 
         ids_rdv = []
-        for index, date_rdv, heure_rdv, motif, statut in RENDEZ_VOUS:
+        for index, date_rdv, heure_rdv, motif, statut, duree in RENDEZ_VOUS:
             curseur = connexion.execute(
-                """INSERT INTO rendez_vous (patient_id, date_rdv, heure_rdv, motif, statut)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (ids_patients[index], date_rdv, heure_rdv, motif, statut),
+                """INSERT INTO rendez_vous (patient_id, date_rdv, heure_rdv, motif, statut, duree_minutes)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (ids_patients[index], date_rdv, heure_rdv, motif, statut, duree),
             )
             ids_rdv.append(curseur.lastrowid)
 

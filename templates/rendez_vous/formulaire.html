@@ -6,6 +6,7 @@
 {{ select("patient_id", "Patient", options_patients, valeurs.patient_id, requis=True) }}
 {{ champ("date_rdv", "Date", valeurs.date_rdv, type="date", requis=True) }}
 {{ champ("heure_rdv", "Heure", valeurs.heure_rdv, type="time", requis=True) }}
+{{ select("duree_minutes", "Durée", options_duree, valeurs.duree_minutes, requis=True) }}
 {{ champ("motif", "Motif", valeurs.motif) }}
 {% if edition %}
 {{ select("statut", "Statut", options_statut, valeurs.statut, requis=True) }}

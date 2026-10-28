@@ -5,7 +5,7 @@ Fichier : `database/cabinet.db` (SQLite, accès via le module `sqlite3` standard
 ## Tables
 
 - `patients` : identité et coordonnées. `nom` et `prenom` sont obligatoires ; `sexe` vaut `F`, `M`, `Autre` ou est vide.
-- `rendez_vous` : rattaché à un patient (`patient_id`). `statut` vaut `prévu`, `honoré` ou `annulé`.
+- `rendez_vous` : rattaché à un patient (`patient_id`). `statut` vaut `prévu`, `honoré` ou `annulé`. `duree_minutes` est la durée en minutes, de 20 à 60 par pas de 5 (30 par défaut).
 - `consultations` : compte-rendu rattaché à un patient, et optionnellement à un rendez-vous (`rendez_vous_id`, NULL si absent).
 
 Les dates sont au format `AAAA-MM-JJ`, les heures au format `HH:MM`.

@@ -29,3 +29,11 @@ th,td{text-align:left;padding:.5rem .4rem;border-bottom:1px solid #e5e5e5;vertic
 dl{display:grid;grid-template-columns:max-content 1fr;gap:.4rem 1rem;margin:0}
 dt{font-weight:600}
 dd{margin:0}
+.agenda{display:grid;grid-template-columns:3rem repeat(5,minmax(0,1fr));background:#fff;border:1px solid #ddd;border-radius:6px;margin-bottom:1rem}
+.agenda-entete{padding:.4rem .2rem;font-weight:600;font-size:.8rem;text-align:center;text-transform:capitalize;border-bottom:1px solid #ddd}
+.agenda-heures{font-size:.75rem;color:#777;text-align:right;padding-right:.4rem;box-sizing:border-box}
+.agenda-colonne{position:relative;overflow:hidden;border-left:1px solid #e5e5e5;background-image:linear-gradient(#e5e5e5 1px,transparent 1px)}
+.creneau{position:absolute;left:3px;right:3px;box-sizing:border-box;padding:.2rem .35rem;border-left:3px solid #0066cc;border-radius:4px;background:#e8f0fb;color:#222;font-size:.72rem;line-height:1.25;overflow:hidden;text-decoration:none}
+.creneau.honore{border-left-color:#2e7d32;background:#e8f5e9}
+.creneau.annule{border-left-color:#777;background:#eee;color:#666;text-decoration:line-through}
+.pastille{display:inline-block;padding:0 .3rem;border-radius:3px;background:#555;color:#fff;font-size:.65rem}

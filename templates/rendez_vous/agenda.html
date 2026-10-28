@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block contenu %}
+<div class="actions barre">
+<a class="bouton" href="/agenda?semaine={{ semaine_precedente }}">Semaine précédente</a>
+<a class="bouton" href="/agenda">Semaine courante</a>
+<a class="bouton" href="/agenda?semaine={{ semaine_suivante }}">Semaine suivante</a>
+<span>Du {{ lundi.strftime('%d/%m/%Y') }} au {{ vendredi.strftime('%d/%m/%Y') }}</span>
+</div>
+{% set classes_statut = {"prévu": "prevu", "honoré": "honore", "annulé": "annule"} %}
+<div class="agenda">
+<div class="agenda-entete"></div>
+{% for colonne in colonnes %}
+<div class="agenda-entete">{{ colonne.libelle }}</div>
+{% endfor %}
+<div class="agenda-heures" style="height: {{ hauteur_grille }}px">
+{% for heure in range(heure_debut, heure_fin) %}
+<div style="height: {{ hauteur_heure }}px">{{ "%02d" | format(heure) }} h</div>
+{% endfor %}
+</div>
+{% for colonne in colonnes %}
+<div class="agenda-colonne" style="height: {{ hauteur_grille }}px; background-size: 100% {{ hauteur_heure }}px">
+{% for rdv, haut, hauteur in colonne.blocs %}
+<a class="creneau {{ classes_statut.get(rdv.statut, '') }}" style="top: {{ haut }}px; height: {{ hauteur }}px" href="/patients/{{ rdv.patient_id }}" title="{{ rdv.nom }} {{ rdv.prenom }} · {{ rdv.duree_minutes }} min">
+<strong>{{ rdv.heure_rdv }}</strong> {{ rdv.nom }} {{ rdv.prenom }}<br>{{ rdv.motif or "—" }}{% if rdv.a_compte_rendu %} <span class="pastille">CR</span>{% endif %}
+</a>
+{% endfor %}
+</div>
+{% endfor %}
+</div>
+{% if hors_plage %}
+<section class="carte">
+<h2>Hors plage {{ heure_debut }} h – {{ heure_fin }} h</h2>
+<ul>
+{% for rdv in hors_plage %}
+<li>{{ rdv.date_rdv }} à {{ rdv.heure_rdv }} ({{ rdv.duree_minutes }} min) : <a href="/patients/{{ rdv.patient_id }}">{{ rdv.nom }} {{ rdv.prenom }}</a>{% if rdv.motif %}, {{ rdv.motif }}{% endif %}</li>
+{% endfor %}
+</ul>
+</section>
+{% endif %}
+{% endblock %}

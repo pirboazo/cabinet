@@ -32,6 +32,7 @@ CREATE TABLE rendez_vous (
     heure_rdv TIME NOT NULL,
     motif TEXT,
     statut TEXT DEFAULT 'prévu',
+    duree_minutes INTEGER NOT NULL DEFAULT 30 CHECK (duree_minutes BETWEEN 20 AND 60),
     FOREIGN KEY (patient_id) REFERENCES patients (id)
 );
 

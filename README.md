@@ -7,7 +7,8 @@ Le fonctionnement détaillé (routes, règles de validation, modèle de données
 ## Fonctionnalités
 
 - Patients : création, fiche, modification.
-- Rendez-vous : prise, modification, suppression (les comptes-rendus liés sont conservés).
+- Rendez-vous : prise, modification, suppression (les comptes-rendus liés sont conservés). Deux rendez-vous non annulés ne peuvent pas se chevaucher le même jour.
+- Agenda hebdomadaire : semaine du lundi au vendredi (jours ouvrés), de 8 h à 18 h, rendez-vous de 20 min à 1 h. Les rendez-vous du week-end ne sont pas affichés.
 - Comptes-rendus de consultation : saisie, détail, modification, filtre par médecin.
 
 ## Stack
@@ -35,6 +36,16 @@ venv/bin/pip install -r requirements.txt
 venv/bin/python database/create_db.py       # crée database/cabinet.db (refuse si elle existe)
 venv/bin/python database/peupler_donnees.py # optionnel : données fictives, sur base vide uniquement
 ```
+
+## Mettre à jour une base existante
+
+Une base créée avant l'ajout de la durée des rendez-vous n'a pas la colonne `duree_minutes`. L'ajouter une seule fois, depuis la racine du projet, après une sauvegarde de `database/cabinet.db` :
+
+```bash
+venv/bin/python -c "import sqlite3; c = sqlite3.connect('database/cabinet.db'); c.execute('ALTER TABLE rendez_vous ADD COLUMN duree_minutes INTEGER NOT NULL DEFAULT 30 CHECK (duree_minutes BETWEEN 20 AND 60)'); c.commit()"
+```
+
+Les rendez-vous existants reçoivent alors une durée de 30 minutes.
 
 ## Lancer l'application
 
