@@ -339,22 +339,35 @@ def accueil():
     return redirect("/patients")
 
 
+def recherche_patient(q):
+    """Clause WHERE et paramètres : date de naissance si q est une date, sinon nom ou prénom."""
+    if not q:
+        return "", ()
+    if date_valide(q):
+        return "WHERE date_naissance = ?", (q,)
+    motif = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    return "WHERE nom LIKE ? ESCAPE '\\' OR prenom LIKE ? ESCAPE '\\'", (motif, motif)
+
+
 @app.get("/patients")
 def liste_patients():
+    q = request.args.get("q", "").strip()
+    filtre, parametres = recherche_patient(q)
     with closing(se_connecter_a_la_base()) as db:
-        total = db.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
+        total = db.execute("SELECT COUNT(*) FROM patients " + filtre, parametres).fetchone()[0]
         nombre_pages = (total + PATIENTS_PAR_PAGE - 1) // PATIENTS_PAR_PAGE or 1
         page = min(entier_valide(request.args.get("page", "")) or 1, nombre_pages)
         patients = db.execute(
-            """SELECT id, nom, prenom, date_naissance FROM patients
+            "SELECT id, nom, prenom, date_naissance FROM patients " + filtre + """
                ORDER BY nom COLLATE NOCASE, prenom COLLATE NOCASE, id
                LIMIT ? OFFSET ?""",
-            (PATIENTS_PAR_PAGE, (page - 1) * PATIENTS_PAR_PAGE),
+            parametres + (PATIENTS_PAR_PAGE, (page - 1) * PATIENTS_PAR_PAGE),
         ).fetchall()
     return render_template(
         "patients/liste.html",
         titre="Patients",
         patients=patients,
+        q=q,
         page=page,
         nombre_pages=nombre_pages,
         total=total,
@@ -446,9 +459,9 @@ def modifier_patient(patient_id):
 
 @app.get("/rendez-vous")
 def liste_rendez_vous():
-    vue = request.args.get("vue", "tous")
+    vue = request.args.get("vue", "jour")
     if vue not in VUES_RENDEZ_VOUS:
-        vue = "tous"
+        vue = "jour"
     reference = request.args.get("date", "")
     if not date_valide(reference):
         reference = date.today().isoformat()

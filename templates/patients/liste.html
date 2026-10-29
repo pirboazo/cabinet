@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block contenu %}
 <div class="actions barre"><a class="bouton" href="/patients/nouveau">Ajouter un patient</a></div>
+<form class="actions barre" method="get" action="/patients">
+<label>Recherche <input type="search" name="q" value="{{ q }}" placeholder="Nom, prénom ou date de naissance (AAAA-MM-JJ)"></label>
+<button class="bouton" type="submit">Rechercher</button>
+{% if q %}<a class="bouton" href="/patients">Effacer</a>{% endif %}
+</form>
 {% if patients %}
 <table>
 <thead><tr><th>Nom</th><th>Prénom</th><th>Date de naissance</th></tr></thead>
@@ -11,11 +16,11 @@
 </tbody>
 </table>
 {% else %}
-<p class="vide">Aucun patient.</p>
+<p class="vide">{% if q %}Aucun patient ne correspond à « {{ q }} ».{% else %}Aucun patient.{% endif %}</p>
 {% endif %}
 <div class="actions barre">
-{% if page > 1 %}<a class="bouton" href="/patients?page={{ page - 1 }}">Page précédente</a>{% endif %}
+{% if page > 1 %}<a class="bouton" href="/patients?{{ {'page': page - 1, 'q': q} | urlencode }}">Page précédente</a>{% endif %}
 <span>Page {{ page }} sur {{ nombre_pages }} · {{ total }} au total</span>
-{% if page < nombre_pages %}<a class="bouton" href="/patients?page={{ page + 1 }}">Page suivante</a>{% endif %}
+{% if page < nombre_pages %}<a class="bouton" href="/patients?{{ {'page': page + 1, 'q': q} | urlencode }}">Page suivante</a>{% endif %}
 </div>
 {% endblock %}

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.4 |
+| Version | 1.5 |
 | Date | 2026-10-28 |
 | Portée | Application web locale de gestion des patients, rendez-vous et comptes-rendus de consultation |
 | Licence | MIT (fichier `LICENSE`) |
@@ -36,11 +36,11 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 | Méthode | URL | Fonction | Comportement |
 |---|---|---|---|
 | GET | `/` | `accueil` | Redirige vers `/patients` |
-| GET | `/patients` | `liste_patients` | Liste paginée des patients (nom, prénom, date de naissance), 12 par page via `?page=N` ; page absente ou invalide → 1 ; page au-delà de la dernière → dernière page ; chaque nom mène à la fiche |
+| GET | `/patients` | `liste_patients` | Liste paginée des patients (nom, prénom, date de naissance), 12 par page via `?page=N` ; page absente ou invalide → 1 ; page au-delà de la dernière → dernière page ; recherche `?q=` : si `q` est une date `AAAA-MM-JJ`, égalité sur la date de naissance, sinon sous-chaîne du nom ou du prénom (insensible à la casse, `%` et `_` littéraux) ; pagination conservant `q` ; chaque nom mène à la fiche |
 | GET, POST | `/patients/nouveau` | `nouveau_patient` | Formulaire de création ; succès → `/patients/<id>` |
 | GET | `/patients/<id>` | `fiche_patient` | Identité, rendez-vous et comptes-rendus du patient ; 404 si inconnu |
 | GET, POST | `/patients/<id>/modifier` | `modifier_patient` | Formulaire pré-rempli ; succès → `/patients/<id>` ; 404 si inconnu |
-| GET | `/rendez-vous` | `liste_rendez_vous` | Tous les RDV (date, heure, durée, patient, motif, statut) avec boutons Supprimer et, sauf si un compte-rendu est lié, Modifier ; filtre `?vue=tous\|jour\|semaine` et `?date=AAAA-MM-JJ` (jour : ce jour ; semaine : du lundi au dimanche de cette date ; date absente ou invalide → aujourd'hui ; vue inconnue → tous) |
+| GET | `/rendez-vous` | `liste_rendez_vous` | RDV (date, heure, durée, patient, motif, statut) avec boutons Supprimer et, sauf si un compte-rendu est lié, Modifier ; filtre `?vue=jour\|semaine\|tous` (défaut `jour`) et `?date=AAAA-MM-JJ` (jour : ce jour ; semaine : du lundi au dimanche de cette date ; tous : sans bornes) ; date absente ou invalide → aujourd'hui ; vue inconnue → jour |
 | GET | `/agenda` | `agenda` | Vue hebdomadaire du lundi au vendredi (jours ouvrés), grille 08:00–18:00 ; `?semaine=AAAA-MM-JJ` (toute date de la semaine) ; date absente ou invalide → semaine courante ; RDV hors plage listés sous la grille ; RDV du samedi et du dimanche non affichés |
 | GET, POST | `/rendez-vous/nouveau` | `nouveau_rendez_vous` | Formulaire de prise de RDV ; `?patient_id=` présélectionne le patient ; succès → `/patients/<patient>` |
 | GET, POST | `/rendez-vous/<id>/modifier` | `modifier_rendez_vous` | Formulaire pré-rempli, statut modifiable ; succès → `/rendez-vous` ; 404 si inconnu ; 403 si un compte-rendu est lié au RDV |
@@ -58,7 +58,7 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 
 ### 3.3 Domaine « Patients »
 
-**Liste** : une entrée par patient, 12 par page, ordonnée par nom puis prénom (insensible à la casse) ; nom et prénom cliquables ; bouton « Ajouter un patient » ; pied de liste : « Page précédente », « Page suivante » et « Page X sur Y · N au total ».
+**Liste** : une entrée par patient, 12 par page, ordonnée par nom puis prénom (insensible à la casse) ; champ « Recherche » (nom, prénom ou date de naissance `AAAA-MM-JJ`) avec bouton « Rechercher » et, si une recherche est active, lien « Effacer » ; sans résultat : « Aucun patient ne correspond à « … » » ; nom et prénom cliquables ; bouton « Ajouter un patient » ; pied de liste : « Page précédente », « Page suivante » et « Page X sur Y · N au total ».
 
 **Fiche** :
 - identité : date de naissance, sexe, téléphone, email, adresse, antécédents ;
@@ -72,7 +72,7 @@ L'application est destinée à un usage local (poste unique, réseau de confianc
 
 ### 3.4 Domaine « Rendez-vous »
 
-- Liste globale triée par date puis heure, croissantes ; filtre `Tous` / `Jour` / `Semaine` avec une date. Les RDV du week-end y figurent, contrairement à l'agenda.
+- Liste globale triée par date puis heure, croissantes ; filtre `Jour` (défaut) / `Semaine` / `Tous` avec une date. Les RDV du week-end y figurent, contrairement à l'agenda.
 - Création : patient obligatoire, date et heure obligatoires, durée obligatoire (de 20 à 60 min par pas de 5, 30 min pré-remplies), motif facultatif ; statut forcé à `prévu`.
 - Modification : patient, date, heure, durée, motif et statut (`prévu`, `honoré`, `annulé`). Interdite si un compte-rendu est lié au RDV : la route répond `403` et le bouton Modifier n'est pas affiché.
 - Chevauchement interdit, à la création comme à la modification : un RDV ne peut pas chevaucher un autre RDV du même jour dont le statut n'est pas `annulé`. Un RDV `annulé` ne bloque pas son créneau et n'est pas bloqué par les autres. Deux RDV qui se touchent (l'un finit à l'heure où l'autre commence) sont acceptés. Le RDV modifié n'est pas comparé à lui-même.
@@ -215,6 +215,7 @@ Le venv local et les fichiers de clés ne font pas partie de l'application et ne
 | `valeurs_depuis_formulaire()`, `valeurs_depuis_ligne()` | Lecture des champs saisis, ou des lignes SQLite pour pré-remplir un formulaire |
 | `erreur_formulaire_patient()`, `valider_rendez_vous()`, `valider_consultation()` | Validation ; toutes les erreurs d'un formulaire sont collectées |
 | `options_patients()`, `options_rendez_vous()` | Options des listes déroulantes ; libellé RDV « date heure · NOM Prénom · motif » |
+| `recherche_patient()` | Clause `WHERE` et paramètres de la recherche patient : égalité sur `date_naissance` si `q` est une date, sinon `LIKE` échappé sur `nom` et `prenom` |
 | `rendez_vous_chevauche()`, `lundi_de_la_semaine()`, `position_dans_grille()` | Contrôle de chevauchement des RDV non annulés ; calcul de la semaine affichée et de la position des blocs dans la grille de la route `agenda()` |
 | `rendre_formulaire_patient()`, `rendre_formulaire_rendez_vous()`, `rendre_formulaire_consultation()` | Rendu des formulaires via `render_template` |
 | Routes | Lecture SQLite, validation, écriture avec `commit()`, redirections, `render_template` pour les pages |
@@ -248,7 +249,8 @@ flowchart TD
 
 - Aucune authentification, aucun contrôle d'accès, aucun jeton CSRF : usage local uniquement.
 - `app.run(debug=True)` : mode développement à ne pas exposer.
-- Pas de recherche patient ni de tri configurable. La liste des patients est paginée ; la liste des RDV ne l'est pas.
+- Pas de tri configurable. La liste des patients est paginée et recherchable ; la liste des RDV n'est pas paginée.
+- La recherche patient (`LIKE` de SQLite) ne distingue pas les accents : « lefevre » ne trouve pas « Lefèvre ».
 - Le contrôle de chevauchement (§3.4) ne s'applique que par l'application : une base modifiée hors application peut contenir des RDV qui se chevauchent, que l'agenda affiche alors superposés.
 - Email et téléphone non validés côté serveur (seuls les `type="email"` / `type="tel"` HTML guident la saisie).
 - Suppression limitée aux rendez-vous ; patients et comptes-rendus ne sont pas supprimables via l'interface.
@@ -281,3 +283,5 @@ Le comportement décrit a été vérifié avec le client de test Flask sur une c
 Version 1.3 (agenda, durée, chevauchement) : vérifiée avec le client de test Flask sur une base temporaire (29 contrôles, puis 14 contrôles de chevauchement, scripts supprimés), puis sur une copie de `database/cabinet.db` migrée (pages principales, `/agenda`, `/rendez-vous/<id>/modifier` en 403 pour un RDV lié à un compte-rendu). Le rendu de la grille a été validé à l'écran.
 
 Version 1.4 (pagination des patients à 12 par page, filtre des RDV par jour ou semaine) : vérifiée avec le client de test Flask (17 contrôles) sur `database/cabinet.db` enrichie de 150 patients, 450 RDV (150 à venir, 300 passés) et 300 comptes-rendus fictifs (requêtes GET), puis sur une copie pour les RDV du week-end (visibles dans la liste des RDV, absents de l'agenda).
+
+Version 1.5 (recherche des patients par nom, prénom ou date de naissance ; RDV affichés par jour par défaut) : vérifiée avec le client de test Flask (17 contrôles, requêtes GET) sur `database/cabinet.db` : recherche par sous-chaîne et par date, caractères joker échappés, message sans résultat, pagination conservant `q`, vue par défaut `jour`, vue `tous` (460 lignes), repli sur `jour` pour une vue inconnue.
